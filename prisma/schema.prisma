@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders     Order[]
+  enrollments Enrollment[]
+  reviews    Review[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  icon        String?
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  shortDesc   String?
+  price       Float
+  originalPrice Float?
+  currency    String   @default("INR")
+  thumbnail   String?
+  previewVideo String?
+  level       String   @default("Beginner") // Beginner, Intermediate, Advanced
+  duration    String?  // e.g. "12 hours"
+  lessons     Int      @default(0)
+  students    Int      @default(0)
+  rating      Float    @default(0)
+  ratingCount Int      @default(0)
+  instructor  String
+  instructorAvatar String?
+  featured    Boolean  @default(false)
+  bestSeller  Boolean  @default(false)
+  tags        String?  // JSON array string
+  status      String   @default("published") // published, draft, archived
+  categoryId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category    Category? @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+  enrollments Enrollment[]
+  reviews     Review[]
+  chapters    Chapter[]
+}
+
+model Chapter {
+  id       String   @id @default(cuid())
+  title    String
+  order    Int      @default(0)
+  duration String?  // e.g. "45 min"
+  isFree   Boolean  @default(false)
+  productId String
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lessons  Lesson[]
+}
+
+model Lesson {
+  id        String   @id @default(cuid())
+  title     String
+  duration  String?
+  order     Int      @default(0)
+  type      String   @default("video") // video, article, quiz, resource
+  chapterId String
+
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String?
+  sessionId String?
+  productId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@index([userId])
+  @@index([sessionId])
+}
+
+model Order {
+  id            String    @id @default(cuid())
+  orderNumber   String    @unique
+  userId        String
+  status        String    @default("pending") // pending, confirmed, completed, cancelled, refunded
+  totalAmount   Float
+  subtotal      Float
+  discount      Float     @default(0)
+  paymentMethod String    @default("razorpay") // razorpay, upi, card, netbanking
+  paymentStatus String    @default("pending") // pending, completed, failed, refunded
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id])
+  items     OrderItem[]
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  productId   String
+  title       String
+  thumbnail   String?
+  price       Float
+  quantity    Int     @default(1)
+  createdAt   DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  progress  Float    @default(0) // percentage 0-100
+  status    String   @default("active") // active, completed, expired
+  enrolledAt DateTime @default(now())
+  lastAccessedAt DateTime?
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  rating    Int      // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Coupon {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  discount  Float    // percentage
+  maxUses   Int      @default(100)
+  usedCount Int      @default(0)
+  minAmount Float?
+  expiresAt DateTime?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
