@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
+    // Check if data already exists — skip re-seeding
+    const existingCount = await db.product.count();
+    if (existingCount > 0) {
+      return NextResponse.json({ success: true, message: "Database already seeded", counts: { products: existingCount } });
+    }
+
     // --- Clear existing data (respecting FK constraints) ---
     await db.review.deleteMany();
     await db.enrollment.deleteMany();

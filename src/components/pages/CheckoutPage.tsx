@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CreditCard, Smartphone, Building2, Wallet, ShieldCheck, Lock, Loader2,
-  CheckCircle2, Tag, ArrowLeft
+  CheckCircle2, Tag
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,10 +29,15 @@ const paymentMethods = [
 
 export default function CheckoutPage() {
   const {
-    cartItems, cartTotal, appliedCoupon, couponError, applyCoupon, removeCoupon,
-    currentUser, isLoggedIn, loginAsDemo, createOrder, navigateTo, goBack,
+    cartItems, appliedCoupon, couponError, applyCoupon, removeCoupon,
+    currentUser, isLoggedIn, loginAsDemo, createOrder, navigateTo,
   } = useStore()
   const { toast } = useToast()
+
+  // Compute totals inline for reactivity
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const discountAmount = appliedCoupon ? Math.round((cartTotal * appliedCoupon.discount) / 100) : 0
+  const finalTotal = Math.max(0, cartTotal - discountAmount)
 
   const [paymentMethod, setPaymentMethod] = useState('upi')
   const [name, setName] = useState('')
@@ -45,9 +50,6 @@ export default function CheckoutPage() {
   const [couponInput, setCouponInput] = useState('')
   const [processing, setProcessing] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-
-  const discountAmount = appliedCoupon ? Math.round((cartTotal * appliedCoupon.discount) / 100) : 0
-  const finalTotal = Math.max(0, cartTotal - discountAmount)
 
   useEffect(() => {
     if (currentUser) {

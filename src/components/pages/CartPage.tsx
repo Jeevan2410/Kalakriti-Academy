@@ -16,13 +16,14 @@ function formatPrice(price: number) {
 
 export default function CartPage() {
   const {
-    cartItems, removeFromCart, updateQuantity, cartTotal, cartItemCount,
+    cartItems, removeFromCart, updateQuantity, cartItemCount,
     appliedCoupon, couponError, applyCoupon, removeCoupon, navigateTo,
   } = useStore()
 
   const [couponInput, setCouponInput] = useState('')
   const [applying, setApplying] = useState(false)
 
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const discountAmount = appliedCoupon ? Math.round((cartTotal * appliedCoupon.discount) / 100) : 0
   const finalTotal = Math.max(0, cartTotal - discountAmount)
 

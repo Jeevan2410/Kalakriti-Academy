@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Star, Users, Clock, Award, BookOpen, Globe, Certificate,
+  Star, Users, Clock, Award, BookOpen, Globe, GraduationCap,
   ChevronDown, ChevronUp, Play, FileText, HelpCircle,
   Share2, Heart, ShoppingCart, Zap, CheckCircle2
 } from 'lucide-react'
@@ -93,7 +93,7 @@ export default function CourseDetailPage() {
     { icon: BookOpen, label: 'Lessons', value: `${totalLessons} lessons` },
     { icon: Users, label: 'Students', value: p.students.toLocaleString('en-IN') },
     { icon: Globe, label: 'Language', value: 'English' },
-    { icon: Certificate, label: 'Certificate', value: 'Yes' },
+    { icon: GraduationCap, label: 'Certificate', value: 'Yes' },
   ]
 
   return (

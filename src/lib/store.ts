@@ -74,6 +74,7 @@ interface OrderItem {
 
 interface Order {
   id: string
+  userId: string
   orderNumber: string
   status: string
   totalAmount: number
@@ -477,6 +478,8 @@ export const useStore = create<AppStore>((set, get) => ({
       cartItems: [],
       appliedCoupon: null,
       couponError: null,
+      // Sync user ID with DB user ID from the order
+      currentUser: state.currentUser ? { ...state.currentUser, id: order.userId } : state.currentUser,
     }))
     return order
   },

@@ -34,11 +34,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId, sessionId, couponCode, paymentMethod = "razorpay" } = body;
 
-    // Fetch cart items
+    // Fetch cart items - try userId first, then sessionId
     const cartWhere: Record<string, unknown> = {};
-    if (userId) cartWhere.userId = userId;
-    else if (sessionId) cartWhere.sessionId = sessionId;
-    else return NextResponse.json({ error: "userId or sessionId required" }, { status: 400 });
+    if (userId && sessionId) {
+      cartWhere.OR = [{ userId }, { sessionId }];
+    } else if (userId) {
+      cartWhere.userId = userId;
+    } else if (sessionId) {
+      cartWhere.sessionId = sessionId;
+    } else {
+      return NextResponse.json({ error: "userId or sessionId required" }, { status: 400 });
+    }
 
     const cartItems = await db.cartItem.findMany({
       where: cartWhere,
@@ -72,18 +78,19 @@ export async function POST(request: NextRequest) {
     const orderCount = await db.order.count();
     const orderNumber = `KA${String(orderCount + 1).padStart(5, "0")}`;
 
-    // Find or create user
+    // Find or create user (idempotent)
     let finalUserId = userId;
-    if (!finalUserId && sessionId) {
-      const existingUser = await db.user.findFirst({ where: { email: `guest_${sessionId}@kalakriti.com` } });
-      if (existingUser) {
-        finalUserId = existingUser.id;
-      } else {
-        const newUser = await db.user.create({
-          data: { email: `guest_${sessionId}@kalakriti.com`, name: "Guest User" },
-        });
-        finalUserId = newUser.id;
-      }
+    const existingUser = finalUserId ? await db.user.findUnique({ where: { id: finalUserId } }) : null;
+    if (!existingUser) {
+      // User doesn't exist in DB, create one
+      const email = finalUserId ? `user_${finalUserId}@kalakriti.com` : `guest_${sessionId}@kalakriti.com`;
+      const name = finalUserId ? "Demo User" : "Guest User";
+      const newUser = await db.user.upsert({
+        where: { email },
+        update: {},
+        create: { email, name },
+      });
+      finalUserId = newUser.id;
     }
 
     // Create order

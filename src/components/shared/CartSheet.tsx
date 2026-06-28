@@ -14,12 +14,13 @@ function formatPrice(price: number) {
 }
 
 export default function CartSheet() {
-  const { isCartOpen, setCartOpen, cartItems, removeFromCart, updateQuantity, cartTotal, cartItemCount, appliedCoupon, couponError, applyCoupon, removeCoupon, navigateTo } = useStore()
+  const { isCartOpen, setCartOpen, cartItems, removeFromCart, updateQuantity, cartItemCount, appliedCoupon, couponError, applyCoupon, removeCoupon, navigateTo } = useStore()
   const [couponInput, setCouponInput] = useState('')
   const [applyingCoupon, setApplyingCoupon] = useState(false)
 
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const discountAmount = appliedCoupon ? Math.round((cartTotal * appliedCoupon.discount) / 100) : 0
-  const finalTotal = cartTotal - discountAmount
+  const finalTotal = Math.max(0, cartTotal - discountAmount)
 
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return
