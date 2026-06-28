@@ -8,19 +8,25 @@ import useStore from '@/lib/store'
 
 const quickLinks = [
   { label: 'All Courses', page: 'courses' as const },
-  { label: 'Best Sellers', page: 'courses' as const },
-  { label: 'Free Courses', page: 'courses' as const },
+  { label: 'Best Sellers', page: 'courses' as const, sort: 'popular' },
+  { label: 'New Courses', page: 'courses' as const, sort: 'newest' },
   { label: 'My Dashboard', page: 'dashboard' as const },
   { label: 'Order History', page: 'orders' as const },
 ]
 
-const categories = [
+const artCategories = [
   'Painting & Drawing',
   'Digital Art',
   'Traditional Art',
   'Photography',
   'Calligraphy',
-  'Pottery & Sculpture',
+]
+
+const digitalCategories = [
+  'Trading & Stock Market',
+  'Make Money Online',
+  'Digital Marketing',
+  'Tools & Software',
 ]
 
 const socialLinks = [
@@ -39,10 +45,17 @@ export default function Footer() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const handleCategoryClick = (cat: string) => {
+    useStore.getState().setCategory('')
+    useStore.getState().setSearchQuery(cat)
+    navigateTo('courses')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <footer className="bg-foreground text-background mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 lg:py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10">
           {/* About */}
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2.5 mb-4">
@@ -53,7 +66,7 @@ export default function Footer() {
               </div>
             </div>
             <p className="text-sm text-white/60 leading-relaxed mb-5">
-              India&apos;s premier online academy for art & craft courses. Learn painting, digital art, traditional crafts, and more from expert instructors.
+              India&apos;s premier online academy for art, craft, trading, marketing & digital skills. Learn from expert instructors.
             </p>
             <div className="flex gap-2.5">
               {socialLinks.map(({ icon: Icon, href, label }) => (
@@ -76,7 +89,7 @@ export default function Footer() {
               {quickLinks.map((link) => (
                 <li key={link.label}>
                   <button
-                    onClick={() => handleNav(link.page, link.label === 'Best Sellers' ? 'popular' : link.label === 'Free Courses' ? 'price-low' : undefined)}
+                    onClick={() => handleNav(link.page, link.sort)}
                     className="text-sm text-white/60 hover:text-primary transition-colors flex items-center gap-1.5 group"
                   >
                     <ArrowRight className="w-3 h-3 opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
@@ -87,14 +100,31 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Categories */}
+          {/* Art Categories */}
           <div>
-            <h3 className="font-semibold text-sm text-white mb-4">Categories</h3>
+            <h3 className="font-semibold text-sm text-white mb-4">Art & Craft</h3>
             <ul className="space-y-2.5">
-              {categories.map((cat) => (
+              {artCategories.map((cat) => (
                 <li key={cat}>
                   <button
-                    onClick={() => { navigateTo('courses'); }}
+                    onClick={() => handleCategoryClick(cat)}
+                    className="text-sm text-white/60 hover:text-primary transition-colors"
+                  >
+                    {cat}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Digital Categories */}
+          <div>
+            <h3 className="font-semibold text-sm text-white mb-4">Digital Skills</h3>
+            <ul className="space-y-2.5">
+              {digitalCategories.map((cat) => (
+                <li key={cat}>
+                  <button
+                    onClick={() => handleCategoryClick(cat)}
                     className="text-sm text-white/60 hover:text-primary transition-colors"
                   >
                     {cat}

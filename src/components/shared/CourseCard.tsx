@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Star, ShoppingCart, Users, Clock, Award, BadgeCheck } from 'lucide-react'
+import { Star, ShoppingCart, Users, Clock, Award, BadgeCheck, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import useStore from '@/lib/store'
@@ -47,7 +47,7 @@ export default function CourseCard({ product }: { product: Parameters<typeof use
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-amber-100 flex items-center justify-center">
-            <Palette className="w-12 h-12 text-primary/40" />
+            <BookOpen className="w-12 h-12 text-primary/40" />
           </div>
         )}
         {/* Badges */}
@@ -121,14 +121,3 @@ export default function CourseCard({ product }: { product: Parameters<typeof use
   )
 }
 
-function Palette({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor" />
-      <circle cx="17.5" cy="10.5" r="0.5" fill="currentColor" />
-      <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor" />
-      <circle cx="6.5" cy="12" r="0.5" fill="currentColor" />
-      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
-    </svg>
-  )
-}

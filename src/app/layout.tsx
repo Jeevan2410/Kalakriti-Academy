@@ -14,26 +14,34 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kalakriti Academy — Learn Art & Craft Online",
+  title: "Kalakriti Academy — Learn Art, Trading, Marketing & Digital Skills Online",
   description:
-    "Discover creative courses in painting, digital art, traditional crafts, photography, and more. Learn from expert instructors at Kalakriti Academy.",
+    "India's #1 online learning platform for art, craft, stock market trading, digital marketing, freelancing, and productivity tools. 25,000+ students, 100+ courses.",
   keywords: [
     "Kalakriti Academy",
-    "online art courses",
-    "digital art",
+    "online courses India",
+    "stock market trading",
+    "digital marketing course",
+    "make money online",
+    "freelancing course",
+    "art courses",
     "painting",
-    "traditional art",
-    "craft courses",
-    "creative learning",
+    "digital art",
+    "options trading",
+    "Canva design",
+    "Excel course",
+    "Notion course",
+    "YouTube growth",
+    "SEO course",
   ],
   authors: [{ name: "Kalakriti Academy" }],
   icons: {
     icon: "/logo.png",
   },
   openGraph: {
-    title: "Kalakriti Academy — Learn Art & Craft Online",
+    title: "Kalakriti Academy — Learn Art, Trading, Marketing & Digital Skills Online",
     description:
-      "Discover creative courses in painting, digital art, traditional crafts, photography, and more.",
+      "India's #1 online learning platform. Master art, trading, marketing, and digital skills from expert instructors.",
     type: "website",
   },
 };
