@@ -1,0 +1,161 @@
+# =============================================
+# 📋 KALAKRITI ACADEMY - PRODUCTION SETUP GUIDE
+# =============================================
+# Follow each section below step by step.
+# This file contains all the instructions you need.
+
+# =============================================
+# 1️⃣ DATABASE SETUP (Supabase - Free)
+# =============================================
+#
+# STEP 1: Go to https://supabase.com → Sign up (free)
+# STEP 2: Click "New Project" → Name: "kalakriti" → Region: Mumbai → Create
+# STEP 3: Wait 2 minutes for setup
+# STEP 4: Go to Settings → Database → Copy "Connection string (URI)"
+# STEP 5: Paste it below as DATABASE_URL
+#
+# It will look like:
+# DATABASE_URL=postgresql://postgres.xxxxx:[YOUR-PASSWORD]@aws-0-mumbai.pooler.supabase.com:6543/postgres
+#
+# STEP 6: Then run these commands:
+#   npx prisma db push          # Creates tables in Supabase
+#   npx prisma db seed          # Fills with course data
+#
+# ✅ DONE - Your database is now online!
+# You can see it at: https://supabase.com → Your Project → Table Editor
+
+# =============================================
+# 2️⃣ VIDEO HOSTING (Cloudinary - Free 25GB)
+# =============================================
+#
+# STEP 1: Go to https://cloudinary.com → Sign up (free)
+# STEP 2: Go to Dashboard → Copy these 3 values:
+#   - Cloud Name (e.g., "dkalakriti")
+#   - API Key
+#   - API Secret
+# STEP 3: Paste them below
+#
+# STEP 4: To upload videos, use the Upload API:
+#   curl -X POST https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/video/upload \
+#     -F file=@my-video.mp4 \
+#     -F upload_preset=kalakriti-videos \
+#     -F resource_type=video
+#
+# STEP 5: First, create an upload preset in Cloudinary:
+#   → Settings → Upload → Upload Presets → Add Upload Preset
+#   → Name: "kalakriti-videos"
+#   → Signing Mode: Unsigned
+#   → Allowed Formats: mp4, webm, mov
+#   → Save
+#
+# ✅ DONE - Videos will be stored at URLs like:
+# https://res.cloudinary.com/YOUR_CLOUD_NAME/video/upload/v1/VIDEO_ID/course-intro.mp4
+
+# =============================================
+# 3️⃣ PAYMENT GATEWAY (Razorpay - India)
+# =============================================
+#
+# STEP 1: Go to https://dashboard.razorpay.com → Sign up
+# STEP 2: Complete KYC (Aadhaar, PAN, Bank Account - takes 1-2 days)
+# STEP 3: Go to Settings → API Keys → Copy:
+#   - Key ID (starts with rzp_live_...)
+#   - Key Secret
+# STEP 4: Paste them below
+#
+# STEP 5: Test with Test Mode first:
+#   → Dashboard → Toggle "Test Mode" ON
+#   → Use test cards:
+#     - Success: 4111 1111 1111 1111
+#     - Failure: 4000 0000 0000 0002
+#     - UPI Test: success@razorpay
+#
+# ✅ DONE - Real payments will work!
+# Money goes to your bank account in T+3 days.
+
+# =============================================
+# 4️⃣ HOSTING (Vercel - Free)
+# =============================================
+#
+# OPTION A: Vercel (Easiest, Free)
+# -----------------------------------
+# STEP 1: Push code to GitHub
+#   git init
+#   git add .
+#   git commit -m "initial"
+#   git remote add origin https://github.com/YOUR_USERNAME/kalakriti-academy.git
+#   git push -u origin main
+#
+# STEP 2: Go to https://vercel.com → Sign up with GitHub
+# STEP 3: Click "New Project" → Import your repo → Deploy
+# STEP 4: Go to Settings → Environment Variables → Add all the variables below
+# STEP 5: Redeploy
+#
+# ✅ DONE - You get a URL like kalakriti-academy.vercel.app
+#
+# OPTION B: VPS with Domain (Professional, ~₹500/month)
+# --------------------------------------------------------
+# STEP 1: Buy VPS from Hostinger/BigRock/DigitalOcean (~₹150-500/mo)
+# STEP 2: Buy domain from GoDaddy/Namecheap (~₹500-900/year)
+#   Example: kalakritiacademy.com
+# STEP 3: SSH into server: ssh root@YOUR_SERVER_IP
+# STEP 4: Run these commands on the server:
+#   apt update && apt upgrade -y
+#   curl -fsSL https://bun.sh/install | bash
+#   npm install -g pm2
+#   apt install nginx -y
+#
+# STEP 5: Upload your project (git clone or scp)
+# STEP 6: Setup:
+#   cd kalakriti-academy
+#   bun install
+#   cp .env.production .env    # (fill in your credentials)
+#   npx prisma db push
+#   bun run build
+#   pm2 start bun --name kalakriti -- start
+#   pm2 save && pm2 startup
+#
+# STEP 7: Configure Nginx:
+#   nano /etc/nginx/sites-available/kalakriti
+#   (paste the config below, save)
+#   ln -s /etc/nginx/sites-available/kalakriti /etc/nginx/sites-enabled/
+#   nginx -t && systemctl restart nginx
+#
+# STEP 8: Point domain DNS:
+#   GoDaddy DNS Settings → A Record → @ → YOUR_SERVER_IP
+#
+# STEP 9: Add HTTPS (free):
+#   apt install certbot python3-certbot-nginx -y
+#   certbot --nginx -d kalakritiacademy.com
+#
+# ✅ DONE - Your site is live at https://kalakritiacademy.com
+
+# =============================================
+# 5️⃣ ADMIN DASHBOARD ACCESS
+# =============================================
+#
+# Your app already has a student dashboard at:
+#   Click "Sign In" → "Dashboard"
+#
+# For an ADMIN panel (manage courses, users, orders):
+#   Sign in → Go to /admin (needs to be built)
+#
+# For now, manage data directly in:
+#   - Supabase Dashboard → Table Editor (visual database editor)
+#   - Or use Prisma Studio: npx prisma studio
+#
+# =============================================
+# NGINX CONFIG (for Option B - VPS Hosting)
+# =============================================
+# server {
+#     listen 80;
+#     server_name kalakritiacademy.com;
+#
+#     location / {
+#         proxy_pass http://localhost:3000;
+#         proxy_http_version 1.1;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection 'upgrade';
+#         proxy_set_header Host $host;
+#         proxy_cache_bypass $http_upgrade;
+#     }
+# }
