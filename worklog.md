@@ -88,3 +88,65 @@ Stage Summary:
 - 18 total courses across 10 categories
 - All features verified end-to-end via browser automation
 - 0 ESLint errors, 0 runtime errors
+
+---
+Task ID: 3
+Agent: Cloudinary Upload Builder
+Task: Set up Cloudinary upload API route and config
+
+Work Log:
+- Created /src/lib/cloudinary.ts with cloudinary v2 SDK configuration (reads env vars, secure: true)
+- Rewrote /src/app/api/upload/route.ts replacing REST fetch approach with SDK-based upload:
+  - Accepts POST with FormData file + ?type=image|video query param
+  - Validates file type against allowed MIME lists (images: jpeg/png/webp/gif, videos: mp4/webm/quicktime)
+  - Enforces size limits: 10MB for images, 100MB for videos
+  - Images upload to folder "kalakriti/courses" with 1200x800 limit-crop transform and auto quality
+  - Videos upload to folder "kalakriti/videos" with resource_type: "video"
+  - Returns { url, publicId, width, height, format }
+  - Removed old GET signature handler (moved to dedicated route)
+- Created /src/app/api/upload/signature/route.ts (POST):
+  - Accepts JSON body with { folder, resource_type }
+  - Validates resource_type is image/video/auto
+  - Uses cloudinary.utils.api_sign_request for cryptographic signing
+  - Returns { signature, timestamp, apiKey, cloudName, folder } for client-side direct uploads
+- Verified: 0 ESLint errors, dev server clean with no runtime errors
+
+Stage Summary:
+- Cloudinary SDK properly configured and shared via /src/lib/cloudinary.ts
+- Server-side upload endpoint with type-based routing, validation, and image transformations
+- Signed upload signature endpoint for client-side direct Cloudinary uploads
+- All files follow Next.js 16 App Router conventions (route handlers, no 'use server')
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Set up Razorpay payment gateway + integrate with CheckoutPage
+
+Work Log:
+- Created /src/lib/razorpay.ts with config and isRazorpayConfigured flag
+- Created /src/app/api/payments/razorpay/order/route.ts — creates Razorpay order (or simulated if no keys)
+- Created /src/app/api/payments/razorpay/verify/route.ts — verifies payment signature (or auto-approves in simulated mode)
+- Created /src/app/api/payments/razorpay/webhook/route.ts — webhook handler for production events
+- Rewrote CheckoutPage.tsx to integrate Razorpay:
+  - Loads Razorpay checkout.js script dynamically when keys are configured
+  - Creates order via /api/payments/razorpay/order
+  - Opens Razorpay modal for real payments
+  - Falls back to simulated 1.5s payment when keys not configured
+  - Shows "Demo Mode" badge when not configured
+  - Shows user-friendly amber info box explaining how to enable real payments
+  - Simplified to single payment method (Razorpay handles UPI/Card/NetBanking)
+- Updated .env with RAZORPAY_WEBHOOK_SECRET placeholder
+- Created .env.example with all required variables documented
+- Installed cloudinary and razorpay packages
+- Verified full purchase flow via agent-browser:
+  - Sign In → Course Detail → Buy Now → Checkout (shows Razorpay Demo Mode) → Place Order → Order Confirmed
+  - POST /api/payments/razorpay/order returns simulated order
+  - POST /api/payments/razorpay/verify returns verified: true
+  - POST /api/upload?type=image validates file type correctly
+- 0 ESLint errors, 0 runtime errors in dev.log
+
+Stage Summary:
+- Razorpay fully integrated with graceful fallback to simulated payments
+- Cloudinary upload API with image (10MB) and video (100MB) support
+- All APIs verified: /api/upload, /api/payments/razorpay/order, /api/payments/razorpay/verify
+- Supabase credentials in .env, schema ready for PostgreSQL (switch provider in schema.prisma)

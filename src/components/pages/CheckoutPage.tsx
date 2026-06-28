@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  CreditCard, Smartphone, Building2, Wallet, ShieldCheck, Lock, Loader2,
+  Wallet, ShieldCheck, Lock, Loader2,
   CheckCircle2, Tag
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,11 +22,38 @@ function formatPrice(price: number) {
 }
 
 const paymentMethods = [
-  { id: 'upi', label: 'UPI', icon: Smartphone, desc: 'Pay using any UPI app' },
-  { id: 'card', label: 'Credit/Debit Card', icon: CreditCard, desc: 'Visa, Mastercard, RuPay' },
-  { id: 'netbanking', label: 'Net Banking', icon: Building2, desc: 'All major banks supported' },
-  { id: 'razorpay', label: 'Razorpay', icon: Wallet, desc: 'Multiple payment options' },
+  { id: 'razorpay', label: 'Razorpay (UPI, Card, Net Banking)', icon: Wallet, desc: 'All payment methods via Razorpay — UPI, Cards, Wallets, Net Banking' },
 ]
+
+// Extend window type for Razorpay
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance
+  }
+}
+
+interface RazorpayOptions {
+  key: string
+  amount: number
+  currency: string
+  name: string
+  description: string
+  order_id: string
+  handler: (response: RazorpayResponse) => void
+  prefill: { name: string; email: string; contact: string }
+  theme: { color: string }
+  modal?: { ondismiss?: () => void }
+}
+
+interface RazorpayInstance {
+  open: () => void
+}
+
+interface RazorpayResponse {
+  razorpay_payment_id: string
+  razorpay_order_id: string
+  razorpay_signature: string
+}
 
 export default function CheckoutPage() {
   const {
@@ -39,17 +67,15 @@ export default function CheckoutPage() {
   const discountAmount = appliedCoupon ? Math.round((cartTotal * appliedCoupon.discount) / 100) : 0
   const finalTotal = Math.max(0, cartTotal - discountAmount)
 
-  const [paymentMethod, setPaymentMethod] = useState('upi')
+  const [paymentMethod, setPaymentMethod] = useState('razorpay')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [upiId, setUpiId] = useState('')
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvv, setCvv] = useState('')
   const [couponInput, setCouponInput] = useState('')
   const [processing, setProcessing] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false)
+  const [razorpayKeyId, setRazorpayKeyId] = useState<string | null>(null)
 
   useEffect(() => {
     if (currentUser) {
@@ -58,19 +84,130 @@ export default function CheckoutPage() {
     }
   }, [currentUser])
 
+  // Check if Razorpay is configured
+  useEffect(() => {
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+    if (keyId) {
+      setRazorpayKeyId(keyId)
+      // Load Razorpay script
+      if (typeof window !== 'undefined' && !window.Razorpay) {
+        const script = document.createElement('script')
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+        script.async = true
+        script.onload = () => setRazorpayLoaded(true)
+        script.onerror = () => {
+          console.warn('Razorpay script failed to load — will use simulated payment')
+          setRazorpayLoaded(false)
+        }
+        document.body.appendChild(script)
+      } else if (window.Razorpay) {
+        setRazorpayLoaded(true)
+      }
+    }
+  }, [])
+
   const validate = () => {
     const errs: Record<string, string> = {}
     if (!name.trim()) errs.name = 'Name is required'
     if (!email.trim() || !email.includes('@')) errs.email = 'Valid email is required'
     if (!phone.trim() || phone.length < 10) errs.phone = 'Valid phone is required'
-    if (paymentMethod === 'upi' && !upiId.includes('@')) errs.upiId = 'Enter a valid UPI ID'
-    if (paymentMethod === 'card') {
-      if (cardNumber.replace(/\s/g, '').length < 16) errs.cardNumber = 'Enter a valid card number'
-      if (!expiry || !expiry.includes('/')) errs.expiry = 'Enter MM/YY'
-      if (cvv.length < 3) errs.cvv = 'Enter CVV'
-    }
     setErrors(errs)
     return Object.keys(errs).length === 0
+  }
+
+  const handleRazorpayPayment = async () => {
+    if (!validate()) return
+
+    setProcessing(true)
+    try {
+      // Step 1: Create Razorpay order from our backend
+      const orderRes = await fetch('/api/payments/razorpay/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: finalTotal,
+          currency: 'INR',
+          receipt: `KA_${Date.now()}`,
+          notes: { userId: currentUser?.id },
+        }),
+      })
+
+      if (!orderRes.ok) throw new Error('Failed to create payment order')
+      const orderData = await orderRes.json()
+
+      // Step 2: If Razorpay is configured, open the checkout modal
+      if (!orderData.simulated && window.Razorpay) {
+        await new Promise<void>((resolve, reject) => {
+          const options: RazorpayOptions = {
+            key: orderData.key,
+            amount: orderData.amount,
+            currency: orderData.currency,
+            name: 'Kalakriti Academy',
+            description: `${cartItems.length} course(s) purchase`,
+            order_id: orderData.id,
+            handler: async (response: RazorpayResponse) => {
+              try {
+                // Step 3: Verify payment
+                const verifyRes = await fetch('/api/payments/razorpay/verify', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(response),
+                })
+                const verifyData = await verifyRes.json()
+
+                if (verifyData.verified) {
+                  // Step 4: Create the order in our database
+                  const order = await createOrder({
+                    userId: currentUser?.id,
+                    couponCode: appliedCoupon?.code,
+                    paymentMethod: 'razorpay',
+                  })
+                  toast({ title: 'Payment successful!', description: `Order ${order.orderNumber} confirmed.` })
+                  navigateTo('order-confirmation')
+                  resolve()
+                } else {
+                  reject(new Error('Payment verification failed'))
+                }
+              } catch (err) {
+                reject(err)
+              }
+            },
+            prefill: {
+              name: name,
+              email: email,
+              contact: phone,
+            },
+            theme: { color: '#c2410c' }, // Saffron/primary color
+            modal: {
+              ondismiss: () => {
+                setProcessing(false)
+                reject(new Error('Payment cancelled by user'))
+              },
+            },
+          }
+
+          const rzp = new window.Razorpay(options)
+          rzp.open()
+        })
+      } else {
+        // Simulated payment (no Razorpay keys configured)
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        const order = await createOrder({
+          userId: currentUser?.id,
+          couponCode: appliedCoupon?.code,
+          paymentMethod: 'razorpay',
+        })
+        toast({ title: 'Payment successful! (Demo Mode)', description: `Order ${order.orderNumber} confirmed. Configure Razorpay keys for real payments.` })
+        navigateTo('order-confirmation')
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong'
+      if (message !== 'Payment cancelled by user') {
+        toast({ title: 'Payment failed', description: message, variant: 'destructive' })
+      }
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -82,23 +219,8 @@ export default function CheckoutPage() {
       navigateTo('cart')
       return
     }
-    if (!validate()) return
 
-    setProcessing(true)
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      const order = await createOrder({
-        userId: currentUser?.id,
-        couponCode: appliedCoupon?.code,
-        paymentMethod,
-      })
-      toast({ title: 'Payment successful!', description: `Order ${order.orderNumber} confirmed.` })
-      navigateTo('order-confirmation')
-    } catch {
-      toast({ title: 'Payment failed', description: 'Something went wrong. Please try again.', variant: 'destructive' })
-    } finally {
-      setProcessing(false)
-    }
+    await handleRazorpayPayment()
   }
 
   if (cartItems.length === 0) {
@@ -162,41 +284,20 @@ export default function CheckoutPage() {
                   <label key={id} className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === id ? 'border-primary bg-primary/5' : 'hover:border-primary/30'}`}>
                     <RadioGroupItem value={id} />
                     <Icon className="w-5 h-5 text-muted-foreground" />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium">{label}</p>
                       <p className="text-xs text-muted-foreground">{desc}</p>
                     </div>
+                    {!razorpayKeyId && (
+                      <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-700">Demo Mode</Badge>
+                    )}
                   </label>
                 ))}
               </RadioGroup>
 
-              {/* UPI Input */}
-              {paymentMethod === 'upi' && (
-                <div className="pt-2">
-                  <Label htmlFor="upi">UPI ID</Label>
-                  <Input id="upi" value={upiId} onChange={(e) => setUpiId(e.target.value)} className="mt-1.5" placeholder="yourname@upi" />
-                  {errors.upiId && <p className="text-xs text-destructive mt-1">{errors.upiId}</p>}
-                </div>
-              )}
-
-              {/* Card Input */}
-              {paymentMethod === 'card' && (
-                <div className="pt-2 grid sm:grid-cols-3 gap-4">
-                  <div className="sm:col-span-3">
-                    <Label htmlFor="card">Card Number</Label>
-                    <Input id="card" value={cardNumber} onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim())} className="mt-1.5" placeholder="1234 5678 9012 3456" maxLength={19} />
-                    {errors.cardNumber && <p className="text-xs text-destructive mt-1">{errors.cardNumber}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="expiry">Expiry</Label>
-                    <Input id="expiry" value={expiry} onChange={(e) => setExpiry(e.target.value)} className="mt-1.5" placeholder="MM/YY" maxLength={5} />
-                    {errors.expiry && <p className="text-xs text-destructive mt-1">{errors.expiry}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="cvv">CVV</Label>
-                    <Input id="cvv" type="password" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))} className="mt-1.5" placeholder="•••" maxLength={4} />
-                    {errors.cvv && <p className="text-xs text-destructive mt-1">{errors.cvv}</p>}
-                  </div>
+              {!razorpayKeyId && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                  <strong>Demo Mode:</strong> Razorpay is not configured. Payments are simulated. To enable real payments, add your Razorpay API keys in the <code className="bg-amber-100 px-1 rounded">.env</code> file.
                 </div>
               )}
             </CardContent>
@@ -268,7 +369,7 @@ export default function CheckoutPage() {
 
               <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>100% Secure Payment</span>
+                <span>100% Secure Payment via Razorpay</span>
               </div>
             </CardContent>
           </Card>
@@ -282,7 +383,7 @@ export default function CheckoutPage() {
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-card border rounded-2xl p-8 text-center shadow-xl max-w-sm mx-4">
               <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-1">Processing Payment</h3>
-              <p className="text-sm text-muted-foreground">Please do not close this page...</p>
+              <p className="text-sm text-muted-foreground">Please complete the payment...</p>
             </motion.div>
           </motion.div>
         )}

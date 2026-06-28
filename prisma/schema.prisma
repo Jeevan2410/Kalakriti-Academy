@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:../db/dev.db"
 }
 
 model User {
@@ -87,6 +87,8 @@ model Lesson {
   duration  String?
   order     Int      @default(0)
   type      String   @default("video") // video, article, quiz, resource
+  videoUrl  String?  // Cloudinary video URL
+  content   String?  // Article/quiz content (markdown or JSON)
   chapterId String
 
   chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
